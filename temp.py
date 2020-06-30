@@ -2,23 +2,23 @@ import numpy as np
 import simpy
 import random
 import pandas as pd
+import plotly.express as px
 from plotly.offline import download_plotlyjs, init_notebook_mode,  plot
 import plotly.io as pio
 
 pio.renderers.default='svg'
 
 RANDOM_SEED = 42
-WEEKS = 52*3
-SIM_TIME = WEEKS*7*24
-NUM_TURBINES = 100
+YEARS = 25
+WEEKS = 52
+SIM_TIME = YEARS*WEEKS*7*24
+NUM_TURBINES = 1000
 REPAIR_TIME = 1*24
-TIME_TO_FAILURE = 7
-
-def time_to_failure():
-    return np.random.choice([0.1, 0.1, 0.1], p=[0.5, 0.3, 0.2])
-
-def repair_time():
-    return np.random.choice([2000, 2400, 5000], p=[0.5, 0.3, 0.2])
+TIME_TO_FAILURE = 1*7*24
+FAILURES = pd.DataFrame([["Manual reset", 1272, 3, 0],
+                         ["Minor repair", 2120, 7.5, 0],
+                         ["Major repair", 21200, 22, 0],
+                         ["Major replacement", 57818.2, 34, 0]])
 
 class turbine(object):
     """
@@ -26,26 +26,27 @@ class turbine(object):
     failure
     """
     
-    def __init__(self, env, name):
+    def __init__(self, env, name, resource_manager):
         self.env = env
         self.name = name
-#        print("Created Turbine " + str(name))
         self.power = 0
         self.num_failures = 0
         self.failure = "none"
-        self.process = env.process(self.working())
-#        env.process(self.break_machine())
+        self.process = env.process(self.working(resource_manager))
         
-    def working(self):
+    def working(self, resource_manager):
         while True:
             try:
                 start = self.env.now
-                next_failure = self.break_machine()
-                yield self.env.timeout(time_to_failure())
-                self.num_failures += 1
-                yield self.env.timeout(repair_time())
+                failure_type, time_to_fail, len_of_repair = self.break_machine()
+                yield self.env.timeout(time_to_fail)
                 finish = self.env.now
                 self.power += finish-start
+                self.num_failures += 1
+                CTV = resource_manager.request_resource()
+                with CTV.request(priority=1) as req:
+                    yield req
+                    yield self.env.timeout(len_of_repair)
 
             except simpy.Interrupt:
                 pass
@@ -53,18 +54,37 @@ class turbine(object):
 #                yield self.env.timeout(repair_time())
     
     def break_machine(self):
-        failure = np.random.choice([["minor"], ])
+        failure_choice = np.random.choice(len(FAILURES))
+        FAILURES.loc[failure_choice, 3] += 1
+        return FAILURES[0][failure_choice], FAILURES[1][failure_choice], FAILURES[2][failure_choice]
                     
+class resource_manager(object):
+    """
+    Manages the fleet of vessels
+    """
+    
+    def __init__(self, env, name, CTVs):
+        """
+        """
+        self.CTVs = CTVs
+        
+    def request_resource(self):
+#        print("Resource requested")
+        return self.CTVs[0]
+        
+
 print('Wind Site')
-#random.seed(RANDOM_SEED)
+random.seed(RANDOM_SEED)
 env = simpy.Environment()
-turbines = [turbine(env, 'Turbine %d' % i) for i in range(NUM_TURBINES)]
+CTVs = [simpy.PreemptiveResource(env, capacity=1)]
+resource_manager = resource_manager(env, "rm1", CTVs)
+turbines = [turbine(env, 'Turbine %d' % i, resource_manager) for i in range(NUM_TURBINES)]
 env.run(until=SIM_TIME)
 
 turbine_data = pd.DataFrame([])
-turbine_data["Avaliability"] = [(turbines[i].power/SIM_TIME)*100 for i in range(NUM_TURBINES)]
+turbine_data["Uptime"] = [(turbines[i].power/SIM_TIME)*100 for i in range(NUM_TURBINES)]
 turbine_data["Failures"] = [turbines[i].num_failures for i in range(NUM_TURBINES)]
-fig1 = px.histogram(turbine_data, x="Avaliability")
+fig1 = px.histogram(turbine_data, x="Uptime")
 fig1.show()
 fig2 = px.histogram(turbine_data, x="Failures")
 fig2.show()
