@@ -38,18 +38,33 @@ class turbine(object):
         while True:
             try:
                 start = self.env.now
+                
+                # Create a failure
                 failure_type, time_to_fail, len_of_repair = self.break_machine()
+                
+                # Stop when that failure occurs
                 yield self.env.timeout(time_to_fail)
                 finish = self.env.now
+                
+                # Calculate the length of time that the turbine was on for
+                # before it broke, and add to the total.
                 self.power += finish-start
+                
+                # Keep a tally of the number of failures that the wind turbine
+                # has had
                 self.num_failures += 1
-                CTV = resource_manager.request_resource()
+                
+                # Request a resource from the fleet of vessels
+                CTV = resource_manager.request_resource(self)
+                
                 with CTV.request(priority=1) as req:
                     yield req
                     yield self.env.timeout(len_of_repair)
 
             except simpy.Interrupt:
-                pass
+                print("Interrupted")
+
+#                pass
 #                self.broken = True
 #                yield self.env.timeout(repair_time())
     
@@ -57,6 +72,7 @@ class turbine(object):
         failure_choice = np.random.choice(len(FAILURES))
         FAILURES.loc[failure_choice, 3] += 1
         return FAILURES[0][failure_choice], FAILURES[1][failure_choice], FAILURES[2][failure_choice]
+    
                     
 class resource_manager(object):
     """
@@ -68,13 +84,17 @@ class resource_manager(object):
         """
         self.CTVs = CTVs
         
-    def request_resource(self):
-#        print("Resource requested")
+    def request_resource(self, turbine):
+        """
+        A wind turbine has requested a vessel to fix a failure. This will either
+        allocate a vessel to the turbine or let it know to wait for a period
+        before it will try to allocate a vessel again.
+        """
         return self.CTVs[0]
         
 
 print('Wind Site')
-random.seed(RANDOM_SEED)
+#random.seed(RANDOM_SEED)
 env = simpy.Environment()
 CTVs = [simpy.PreemptiveResource(env, capacity=1)]
 resource_manager = resource_manager(env, "rm1", CTVs)
@@ -84,7 +104,7 @@ env.run(until=SIM_TIME)
 turbine_data = pd.DataFrame([])
 turbine_data["Uptime"] = [(turbines[i].power/SIM_TIME)*100 for i in range(NUM_TURBINES)]
 turbine_data["Failures"] = [turbines[i].num_failures for i in range(NUM_TURBINES)]
-fig1 = px.histogram(turbine_data, x="Uptime")
+fig1 = px.histogram(turbine_data, x="Uptime", nbins=100)
 fig1.show()
-fig2 = px.histogram(turbine_data, x="Failures")
+fig2 = px.histogram(turbine_data, x="Failures", nbins=50)
 fig2.show()
