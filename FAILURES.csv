@@ -1,4 +1,4 @@
-Failure,"Failure rate [per turbine, per year]","Failure rate [per turbine, per hour]",MTBF [hours],Active Maintainence Time,Required Vessel
+Type,"Failure rate [per turbine, per year]","Failure rate [per turbine, per hour]",MTBF [hours],Active Maintainence Time,Required Vessel
 Manual Reset,5,0.0007861635220,1272,3,CTV
 Minor repair,3,0.0004716981132,2120,7.5,CTV
 Major repair,0.3,0.0000471698113,21200,22,CTV

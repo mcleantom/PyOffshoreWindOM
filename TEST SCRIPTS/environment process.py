@@ -33,8 +33,6 @@ class turbine(object):
         self.num_failures = 0
         self.failure = "none"
         self.process = env.process(self.working(resource_manager))
-        self.break_machine_proc = env.process(self.wait_for_fix(env))
-        self.break_machine_reactivate = env.event()
         self.time_to_fail = 0
         self.failure_type = ""
         self.len_of_repair = 0
@@ -43,57 +41,31 @@ class turbine(object):
     def working(self, resource_manager):
         while True:
             try:
-#                print(str(self.name) + " Is starting at " + str(env.now))
+#                print(str(self.name) + " Is Fixed at " + str(env.now))
                 # Create a failure
+                start = self.env.now
                 self.failure_type, self.time_to_fail, self.len_of_repair = self.break_machine()
                 
                 # Skip to when that failure occurs
                 yield self.env.timeout(self.time_to_fail)
+#                print(str(self.name) + " Is Broken at " + str(env.now))
                 #That failure has now occured
-
-#                print(str(self.name) + " Is Giving control at " + str(env.now))
-                if self.broken == False:
-                    self.break_machine_reactivate.succeed()
-                    self.break_machine_reactivate = env.event()
-                else:
-                    print("The machine tried to break, but was already broken!")
-#                print(str(self.name) + " Is Given back control at " + str(env.now))
-
+                finish = self.env.now
+                self.power += finish-start
+                self.num_failures += 1
+                
+                broken = env.process(self.broken_machine(env, resource_manager))
+                yield broken
+                
             except simpy.Interrupt:
                 print("Interrupted")
     
-    def wait_for_fix(self, env):
-        while True:
-#            print(str(self.name) + " Is waiting for a failure at " + str(env.now))
-            start = self.env.now
-            # This line waits until an event is called before proceeding
-            # Nothing will happen until the machine is broken
-            yield self.break_machine_reactivate
-            
-            # The turbine is now broken
-#            print(str(self.name) + " Recieved a failure at " + str(env.now))
-            self.broken = True
-            finish = self.env.now
-            
-            # Calculate the length of time that the turbine was on for
-            # before it broke, and add to the total.
-            self.power += finish-start
-            
-            # Keep a tally of the number of failures that the wind turbine
-            # has had
-            self.num_failures += 1
-            
-            # What to do when recieved a failure
-            # Request a resource from the fleet of vessels
-            CTV = resource_manager.request_resource(self)
-
-            with CTV.request(priority=1) as req:
-                yield req
-                yield self.env.timeout(self.len_of_repair)
-            
-#            print(str(self.name) + " Fixed the failure at " + str(env.now))
-            self.broken = False
-    
+    def broken_machine(self, env, resource_manager):
+        """
+        """
+        self.waiting = resource_manager.request_resource(self)
+        yield self.waiting
+        
     def break_machine(self):
         failure_choice = np.random.choice(len(FAILURES))
         FAILURES.loc[failure_choice, 3] += 1
@@ -116,11 +88,18 @@ class resource_manager(object):
         allocate a vessel to the turbine or let it know to wait for a period
         before it will try to allocate a vessel again.
         """
-        return self.CTVs[0]
+#        print("Resource requested")
+        return env.process(self.waiting_failure(env))
+    
+    def waiting_failure(self, env):
+        CTV = CTVs[0]
+        with CTV.request(priority=1) as req:
+            yield req
+            yield env.timeout(10000)
         
 
 print('Wind Site')
-#random.seed(RANDOM_SEED)
+random.seed(RANDOM_SEED)
 env = simpy.Environment()
 CTVs = [simpy.PreemptiveResource(env, capacity=1000)]
 resource_manager = resource_manager(env, "rm1", CTVs)
