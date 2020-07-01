@@ -95,7 +95,7 @@ class resource_manager(object):
         CTV = CTVs[0]
         with CTV.request(priority=1) as req:
             yield req
-            yield env.timeout(10000)
+            yield env.timeout(100)
         
 
 print('Wind Site')
