@@ -1,0 +1,25 @@
+Repair ID,Turbine,Failure,Status,Time to repaired,Start,Finish,Type,CTV,SOV,Helicopter,Crew
+0,1,Manual reset,unrepaired,10,100,,corrective,1,1,0,3
+1,2,Manual reset,unrepaired,5,100,,corrective,1,1,0,3
+2,3,Minor repair,unrepaired,33,100,,corrective,1,1,0,3
+3,4,Manual reset,unrepaired,35,100,,preventive,1,1,0,3
+4,5,Minor repair,unrepaired,40,100,,preventive,1,1,0,3
+5,6,Manual reset,unrepaired,21,100,,corrective,1,1,0,3
+6,7,Manual reset,unrepaired,14,100,,corrective,1,1,0,3
+7,8,Manual reset,unrepaired,15,100,,corrective,1,1,0,3
+8,9,Minor repair,unrepaired,14,100,,corrective,1,1,0,3
+9,10,Manual reset,unrepaired,14,100,,corrective,1,1,0,3
+10,11,Minor repair,unrepaired,14,100,,corrective,1,1,0,3
+11,12,Manual reset,unrepaired,2,100,,corrective,1,1,0,3
+12,13,Minor repair,unrepaired,9,100,,corrective,1,1,0,3
+13,14,Manual reset,repaired,10,100,,corrective,1,1,0,3
+14,15,Manual reset,repaired,22,100,,corrective,1,1,0,3
+15,16,Manual reset,repaired,23,100,,corrective,1,1,0,3
+16,17,Manual reset,repaired,10,100,,corrective,1,1,0,3
+17,18,Manual reset,repaired,4,100,,corrective,1,1,0,3
+18,19,Manual reset,repaired,3,100,,corrective,1,1,0,3
+19,20,Manual reset,repaired,9,100,,corrective,1,1,0,3
+20,21,Minor repair,repaired,101,100,,corrective,1,1,0,3
+21,22,Minor repair,repaired,1,100,,corrective,1,1,0,3
+22,23,Minor repair,repaired,2,100,,corrective,1,1,0,3
+23,24,Minor repair,repaired,3,100,,corrective,1,1,0,3
