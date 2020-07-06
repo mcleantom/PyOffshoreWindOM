@@ -6,11 +6,18 @@ Created on Fri Jul  3 15:36:24 2020
 """
 
 import numpy as np
+from numpy.random import exponential
 import simpy
 import random
+#from scipy.stats import expon
 import pandas as pd
+import plotly.express as px
+from plotly.offline import download_plotlyjs, init_notebook_mode,  plot
+import plotly.io as pio
 
-YEARS = 10
+pio.renderers.default='browser'
+
+YEARS = 1000
 WEEKS = 52
 SIM_TIME = YEARS*WEEKS*7*24
 FAILURES = pd.DataFrame([["Manual reset", 1272, 3],
@@ -32,7 +39,9 @@ def time_to_next_fail(mtbf):
     Inputs:
         mtbf    -   The mean time between failures
     """
-    return np.log(np.random.rand())*(-1*mtbf)
+    parameter = 1/mtbf
+    return exponential(1/parameter, 1000)
+#    return np.log(np.random.rand())*(-1*mtbf)
 
 
 def generate_failures(mtbf, sim_length):
@@ -44,10 +53,11 @@ def generate_failures(mtbf, sim_length):
         mtbf        -   The mean time between failures
         sim_length  -   When to generate failures until
     """
-    df = pd.DataFrame(columns=['Time'])
-    while df["Time"].sum() < sim_length:
-        new_row = {'Time': time_to_next_fail(mtbf)}
-        df = df.append(new_row, ignore_index=True)
+    time = np.array([])
+    while sum(time) < sim_length:
+        time = np.append(time, time_to_next_fail(mtbf))
+    df = pd.DataFrame(time)
+    df.columns = ["Time"]
     return df["Time"]
 
 
@@ -61,13 +71,18 @@ def generate_turbine_failures(failures):
     """
     df = pd.DataFrame()
     for i, x in enumerate(failures['Failure Type']):
-        df[x] = generate_failures(failures.iloc[i, 1], SIM_TIME).cumsum()
+        df[x] = generate_failures(failures.iloc[i, 1], SIM_TIME)
+        print(df[x].describe())
+        fig = px.histogram(df, x=x)
+        fig.show()
+        df[x] = df[x].cumsum()
 
-#    df = pd.melt(df)
-#    df = df.dropna()
-#    df.columns=["Type", "Time"]
-#    df = df.sort_values(by=['Time'])
+    df = pd.melt(df)
+    df = df.dropna()
+    df.columns = ["Type", "Time"]
+    df = df.sort_values(by=['Time'])
     return df
 
 
 failure_timeline = generate_turbine_failures(FAILURES)
+#print(failure_timeline)
