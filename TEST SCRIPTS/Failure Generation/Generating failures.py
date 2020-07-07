@@ -15,7 +15,8 @@ import plotly.express as px
 from plotly.offline import download_plotlyjs, init_notebook_mode,  plot
 import plotly.io as pio
 
-pio.renderers.default='browser'
+pio.renderers.default='svg'
+#pio.renderers.default='browser'
 
 YEARS = 1000
 WEEKS = 52
@@ -39,8 +40,8 @@ def time_to_next_fail(mtbf):
     Inputs:
         mtbf    -   The mean time between failures
     """
-    parameter = 1/mtbf
-    return exponential(1/parameter, 1000)
+    exp_lambda= 1/mtbf
+    return exponential(1/exp_lambda, 10000)
 #    return np.log(np.random.rand())*(-1*mtbf)
 
 
@@ -73,7 +74,7 @@ def generate_turbine_failures(failures):
     for i, x in enumerate(failures['Failure Type']):
         df[x] = generate_failures(failures.iloc[i, 1], SIM_TIME)
         print(df[x].describe())
-        fig = px.histogram(df, x=x)
+        fig = px.histogram(df, x=x,  histnorm='probability density')
         fig.show()
         df[x] = df[x].cumsum()
 
