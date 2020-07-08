@@ -13,7 +13,7 @@ import pandas as pd
 import plotly.express as px
 from plotly.offline import download_plotlyjs, init_notebook_mode,  plot
 import plotly.io as pio
-pio.renderers.default = 'iframe'
+pio.renderers.default = 'svg'
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 import matplotlib.pyplot as plt
@@ -98,8 +98,43 @@ class schedule_manager(object):
         """
         unrepaied_failures = self.failures[self.failures["Status"] != "repaired"]
         unrepaired_corrective_failures = unrepaied_failures[unrepaied_failures["Type"] == "corrective"]
+        
+        for i in self.failures.index:
+            curr_failure = self.failures.iloc[i]
+#            required_vessels = pd.
+            self.allocate_vessels_at_sea(curr_failure)
+    
+    def allocate_vessels_at_sea(self, curr_failure):
+        print(curr_failure)
+        # find the vessels at sea
+        vessels_at_sea = self.find_vessels_at_sea()
+        print("Vessels at sea:")
+        print(vessels_at_sea)
 
+        # from the vessels at sea, which are the correct type?
+        correct_type = self.vessels_of_type(vessels_at_sea,
+                                            CTV=curr_failure["CTV"],
+                                            SOV=curr_failure["SOV"],
+                                            Heli=curr_failure["Heli"])
+        print("Vessels at sea with the correct type:")
+        print(correct_type)
 
+        # from the vessels at sea with the correct type, can any fit in a new
+        
+    
+    def vessels_of_type(self, vessels, CTV, SOV, Heli):
+        """
+        """
+        vessel_type_list = []
+        if CTV:
+            vessel_type_list.append("CTV")
+        if SOV:
+            vessel_type_list.append("SOV")
+        if Heli:
+            vessel_type_list.append("Heli")
+
+        return vessels[vessels["Type"].isin(vessel_type_list)]
+        
     def update_fleet_info(self):
         """
         Updates the current fleet position and onboard crew
@@ -110,8 +145,10 @@ class schedule_manager(object):
         """
         Returns a dataframe of  vessels which are currently not in the harbour
         """
-        self.update_fleet_info()
-        return self.vessels_df[self.vessels_df["Position"] != "Harbour"]
+        current_time = 8 # Replace with env.now()
+        fleet_task = self.fleet_task_at_time(current_time)
+        vessels_at_sea = fleet_task["Position"] != "Harbour"
+        return self.vessels_df[vessels_at_sea]
 
     def fleet_task_at_time(self, time):
         """
@@ -170,7 +207,7 @@ class schedule(object):
         """
         """
         self.ID = ID
-        self.schedule_manager = schedule_manager
+#        self.schedule_manager = schedule_manager
         self.schedule = pd.DataFrame(columns=["Task",
                                               "Start",
                                               "Finish",
@@ -190,6 +227,17 @@ class schedule(object):
                    "Position": position}
         self.schedule = self.schedule.append(new_row, ignore_index=True)
     
+    def edit_event(self, ID, task, start, finish, crew_on_board, resource, position):
+        """
+        """
+        new_row = {"Task": task,
+                   "Start": start,
+                   "Finish": finish,
+                   "Crew on board": crew_on_board,
+                   "Resource": resource,
+                   "Position": position}
+        self.schedule.iloc[ID] = new_row
+    
     def get_times_with_required_crew(self, required_crew):
         """
         """
@@ -201,9 +249,12 @@ class schedule(object):
         Plot a gantt chart of the vessels schedule
         """
         df = self.schedule
-        df["Start"] = START_DATE + pd.to_timedelta(df["Start"], unit="h")
-        df["Finish"] = START_DATE + pd.to_timedelta(df["Finish"],  unit="h")
-        fig = ff.create_gantt(self.schedule,
+        df["Start"] = pd.to_timedelta(df["Start"], unit="h")
+        df["Start"] += START_DATE
+        df["Finish"] = pd.to_timedelta(df["Finish"],  unit="h")
+        df["Finish"] += START_DATE
+        print(df["Start"])
+        fig = ff.create_gantt(df,
                               colors = ['#333F44', '#93e4c1'],
                               index_col = 'Crew on board',
                               showgrid_x = True,
